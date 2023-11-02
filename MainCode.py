@@ -15,12 +15,13 @@ import logging
 import os
 from github import Github
 from datetime import datetime
-import xlrd
+import requests
 ##############################################################################################
 # Declarations
 logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
 InputFileToRead=Config.Read('FILE','targetfile')
-InputToken=Config.Read('GITHUB','token')
+#InputToken=Config.Read('GITHUB','token')
+InputToken='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'
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -43,33 +44,21 @@ class FileVersionCheck():
         except:
             logging.warning('Loading of local workbook '+FileToRead+' failed!')
             return -1
-        print(str(WB.cell(1,1).value)[3:])
+        logging.debug(str(WB.cell(1,1).value)[3:])
         FileVersionCheck.String.append(str(WB.cell(1,1).value)[3:])
-        #return int(''.join(filter(str.isdigit,str(WB.cell(1,1).value)[2:])))
         return float(str(str(WB.cell(1,1).value)[3:]).replace(',','.'))
     
-    def GithubFileVersion(Token):
-        try :
-            Repo=Github(Token).get_repo('TheAsKo/FileUpdater')
-        except :
-            logging.warning('Connecting to server failed!')
-            return -1
-        Content=Repo.get_contents('version.ini').decoded_content
-        try:
-            with open('temp.ini','wb') as f:
-                f.write(Content)
-        except Exception as e:
-            logging.warning('Failed to write file')
-            return -1
-        values=[Config.Read('APP','version','float','temp.ini'),Config.Read('EXCEL','version','float','temp.ini')]    
-        FileDeletion('temp.ini')
+    def GithubFileVersion():
+        DownloadFile('version.ini')
+        values=[Config.Read('APP','version','float','version.ini'),Config.Read('EXCEL','version','float','version.ini')]    
+        FileDeletion('version.ini')
         return values    
     
     def __run__(FileToRead,Token):
         Result=[LocalVersion] #THIS FORMATTING COULD BE CLEANED UP 
-        Result.append(FileVersionCheck.GithubFileVersion(Token)[0])
-        Result.append(FileVersionCheck.GithubFileVersion(Token)[1])
-        FileVersionCheck.String.append(FileVersionCheck.GithubFileVersion(Token)[1])
+        Result.append(FileVersionCheck.GithubFileVersion()[0])
+        Result.append(FileVersionCheck.GithubFileVersion()[1])
+        FileVersionCheck.String.append(FileVersionCheck.GithubFileVersion()[1])
         Result.append(FileVersionCheck.LocalFileVersion(FileToRead))
         logging.info('Version Checks: '+str(Result))
         FileVersionCheck.Final=Result
@@ -106,6 +95,52 @@ class VersionStringRecreating():
         dt = dt.replace(hour=hour, minute=minute, second=second)     
         return str(dt)
 ##############################################################################################
+def DownloadFile(File,ForceDelete=0):
+        if '.xlsx' in File:
+            FileP = File[:File.rfind('.')]+'.data' #BEATUFIL REPLACING OF FILETYPE
+        else : FileP = File
+        try :
+            server=Github(InputToken)
+            repo=server.get_repo('TheAsKo/FileUpdater')
+        except :
+            logging.warning('Connecting to server failed!')
+            return -1
+        try :
+            Content=repo.get_contents(FileP).decoded_content
+        except Exception as e :
+            logging.warning(e)
+            return -1
+        Github.close(server)
+        if ForceDelete == 1:
+            FileDeletion(File)
+        try:
+            with open(File,'wb') as file:
+                file.write(Content)
+        except: 
+            logging.warning('Failed to write file')
+            return -1
+##############################################################################################  
+def UploadFile(File1,VersionControlledFile):
+    if '.xlsx' in File1:
+        FileP = File1[:File1.rfind('.')]+'.data' #BEATUFIL REPLACING OF FILETYPE
+    else : FileP = File1
+    try :
+        server=Github(InputToken)
+        repo=server.get_repo('TheAsKo/FileUpdater')
+    except Exception as e :
+        logging.warning('Connecting to server failed!')
+        logging.warning(e)
+        return -1
+    with open('Zoznam.xlsx', 'rb') as file:
+        data = file.read()
+    repo.update_file(FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/'+FileP).json()['sha'],branch='main')
+    if VersionControlledFile == True:
+        DownloadFile('version.ini')
+        Config.Write('EXCEL','version',FileVersionCheck.Final[3],file='version.ini')
+        with open('version.ini', 'r') as file:
+            data = file.read()
+        repo.update_file('version.ini','dekete old version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/version.ini').json()['sha'],branch='main')
+    Github.close(server)
 
 
 
@@ -115,7 +150,9 @@ class VersionStringRecreating():
 if __name__ == '__main__': #DEBUG
     logging.debug("Code Start")
     FileVersionCheck.__run__(InputFileToRead,InputToken)
-    VersionCompare(FileVersionCheck.Final)
-    print(str(FileVersionCheck.String))
-    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[0]))
-    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[1]))
+    #VersionCompare(FileVersionCheck.Final)
+    #print(str(FileVersionCheck.String))
+    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[0]))
+    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[1]))
+    #DownloadFile('Zoznam.xlsx')
+    UploadFile('Zoznam.xlsx',True)

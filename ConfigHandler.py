@@ -25,7 +25,7 @@ def DefaultConfigWrite(): #AUTO RECOVERY DOESNT WORK BCS LIB LOADS FASTER THAN I
                      'HelpKeys' : 'logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50',
                      'Debug' : 'False'}
     config['FILE'] = {'TargetFile' : 'Zoznam.xlsx'}
-    config['GITHUB'] = {'Token' : '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'}
+    config['GITHUB'] = {'Token' : ''}
     #config['MAIN'] = {'OnlyRootDebug':'True',
     #                'tess_cmd':'C:/Users/nsz.fu.montaz/AppData/Local/Tesseract-OCR/tesseract.exe',
     #                'tessdefault_config':'--psm 7 --oem 3',

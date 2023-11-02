@@ -6,11 +6,11 @@ import logging
 import ConfigHandler as Config
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox
+import subprocess
 ##############################################################################################
 # Declarations
 logging.getLogger().setLevel(logging.DEBUG)
-root = Tk()
-root.title("File Version Handler")
 ##############################################################################################
 # Classes and Definitions
 def center(win):
@@ -29,20 +29,30 @@ def center(win):
 def ButtonPress(arg):
     logging.debug("Assigning Button ID: "+str(arg))
     match arg:
-        case 1 : pass # Download from server
-        case 2 : pass # Upload to server
+        case 1 : # Download from server
+            root.destroy()
+            Code.DownloadFile(Config.Read('FILE','targetfile'))
+            if messagebox.askyesno('File Version Handler','Subor bol uspesne stiahnuty') == 1 : 
+                subprocess.Popen(r'explorer "'+Config.Read('FILE','targetfile'))
+            root.mainloop()
+        case 2 :  # Upload to server
+            root.destroy()
+            Code.UploadFile(Config.Read('FILE','targetfile')) 
+            root.mainloop()
         case 3 : exit() # Force Quit
         case 4 : pass # Update the updater
         case 5 : pass # Update target file
-    root.wm_state('iconic')
+    #root.wm_state('iconic')
 ##############################################################################################
 #  WindowCreation
+root = Tk()
+root.title("File Version Handler") 
 mainframe = ttk.Frame(root, padding="12 12 12 12")
 mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
 root.columnconfigure(0, weight=1)
 root.rowconfigure(0, weight=1)
 
-try: ####IDK WHERE TO PLACE THIS
+try: #### IDK WHERE TO PLACE THIS
     Code.FileVersionCheck.__run__(Code.InputFileToRead,Code.InputToken)
 except:
     logging.critical('Failed to initialize code')
@@ -50,9 +60,9 @@ except:
 ttk.Label(mainframe, text="Sledovany subor: "+Config.Read('FILE','targetfile')).grid(column=1, row=1, sticky=W)
 ttk.Label(mainframe, text="Lokalna verzia: "+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.String[0])).grid(column=1, row=2, sticky=W)
 ttk.Label(mainframe, text='Verzia na servery: '+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.String[1])).grid(column=1, row=3, sticky=W)
-if Code.VersionCompare(Code.FileVersionCheck.Final)[1] <= 2 : ttk.Button(mainframe, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1)).grid(column=1, row=4, sticky=N)
+if Code.VersionCompare(Code.FileVersionCheck.Final)[1] <= 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(mainframe, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1)).grid(column=1, row=4, sticky=N)
 else : ttk.Button(mainframe, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),state=DISABLED).grid(column=1, row=4, sticky=N)
-if Code.VersionCompare(Code.FileVersionCheck.Final)[1] != 2 : ttk.Button(mainframe, text="Nahrat subor na server",command=lambda:ButtonPress(2)).grid(column=2, row=4, sticky=N)
+if Code.VersionCompare(Code.FileVersionCheck.Final)[1] != 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(mainframe, text="Nahrat subor na server",command=lambda:ButtonPress(2)).grid(column=2, row=4, sticky=N)
 else : ttk.Button(mainframe, text="Nahrat subor na server",command=lambda:ButtonPress(2),state=DISABLED).grid(column=2, row=4, sticky=N)
 ttk.Button(mainframe, text="Vypnut aplikaciu",command=lambda:ButtonPress(3)).grid(column=3, row=4, sticky=N)
 ttk.Button(mainframe, text="Aktualizovat aplikaciu",command=lambda:ButtonPress(4),state=DISABLED).grid(column=1, row=5, sticky=N)
