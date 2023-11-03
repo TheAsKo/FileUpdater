@@ -21,7 +21,7 @@ import requests
 logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
 InputFileToRead=Config.Read('FILE','targetfile')
 #InputToken=Config.Read('GITHUB','token')
-InputToken='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'
+InputToken='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'
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -36,8 +36,8 @@ def FileDeletion(file):
         logging.debug('Unable to locate file '+file)
 ##############################################################################################
 class FileVersionCheck():
-    Final=0
-    String=[]
+    Final=[]
+    #String=[]
     def LocalFileVersion(FileToRead):
         try :
             WB = openpyxl.load_workbook(FileToRead,data_only=True)['Main']
@@ -45,20 +45,32 @@ class FileVersionCheck():
             logging.warning('Loading of local workbook '+FileToRead+' failed!')
             return -1
         logging.debug(str(WB.cell(1,1).value)[3:])
-        FileVersionCheck.String.append(str(WB.cell(1,1).value)[3:])
+        #FileVersionCheck.String.append(str(WB.cell(1,1).value)[3:])
         return float(str(str(WB.cell(1,1).value)[3:]).replace(',','.'))
     
-    def GithubFileVersion():
+    def GithubFileVersion(FileToRead):
         DownloadFile('version.ini')
-        values=[Config.Read('APP','version','float','version.ini'),Config.Read('EXCEL','version','float','version.ini')]    
+        try :
+            value1=Config.Read('APP','version','float','version.ini')
+        except :
+            value1=-1
+        try :
+            value2=Config.Read('VERSION',FileToRead,'float','version.ini')
+        except:
+            value2=-1
+        values=[value1,value2]
+        for i in range(len(values)): #IDK what is writing None on error file input so this is quick fix
+            if values[i] == None:
+                values[i] = -1
         FileDeletion('version.ini')
+        print(values)
         return values    
     
-    def __run__(FileToRead,Token):
-        Result=[LocalVersion] #THIS FORMATTING COULD BE CLEANED UP 
-        Result.append(FileVersionCheck.GithubFileVersion()[0])
-        Result.append(FileVersionCheck.GithubFileVersion()[1])
-        FileVersionCheck.String.append(FileVersionCheck.GithubFileVersion()[1])
+    def __run__(FileToRead):
+        Result=[LocalVersion] #THIS FORMATTING COULD BE CLEANED UP ALSO DUAL RUNS DEF
+        Result.append(FileVersionCheck.GithubFileVersion(FileToRead)[0])
+        Result.append(FileVersionCheck.GithubFileVersion(FileToRead)[1])
+        #FileVersionCheck.String.append(FileVersionCheck.GithubFileVersion()[1])
         Result.append(FileVersionCheck.LocalFileVersion(FileToRead))
         logging.info('Version Checks: '+str(Result))
         FileVersionCheck.Final=Result
@@ -67,8 +79,7 @@ class FileVersionCheck():
 def VersionCompare(Data):
     for i in range(len(Data)): #Check for errors
         if Data[i] == -1:
-            logging.critical('Something went wrong! Unable to verity version!')
-            return None
+            logging.warning('Something went wrong! Unable to verity version!')
     if Data[0]==Data[1]:Result=[0]
     elif Data[0]>Data[1]:Result=[1]
     elif Data[0]<Data[1]:Result=[2]
@@ -89,6 +100,7 @@ class VersionStringRecreating():
             int(seconds * 60),
         )
     def __run__(Data):
+        if Data == -1: return 'Neexistuje'
         Data = float(str(Data).replace(',','.'))
         dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(Data) - 2)
         hour, minute, second = VersionStringRecreating.floatHourToTime(Data % 1)
@@ -102,11 +114,12 @@ def DownloadFile(File,ForceDelete=0):
         try :
             server=Github(InputToken)
             repo=server.get_repo('TheAsKo/FileUpdater')
-        except :
+        except Exception as e :
+            logging.warning(e)
             logging.warning('Connecting to server failed!')
             return -1
         try :
-            Content=repo.get_contents(FileP).decoded_content
+            Content=repo.get_contents('/data/'+FileP).decoded_content
         except Exception as e :
             logging.warning(e)
             return -1
@@ -133,13 +146,13 @@ def UploadFile(File1,VersionControlledFile):
         return -1
     with open('Zoznam.xlsx', 'rb') as file:
         data = file.read()
-    repo.update_file(FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/'+FileP).json()['sha'],branch='main')
+    repo.update_file('/data/'+FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/'+FileP).json()['sha'],branch='main')
     if VersionControlledFile == True:
         DownloadFile('version.ini')
         Config.Write('EXCEL','version',FileVersionCheck.Final[3],file='version.ini')
         with open('version.ini', 'r') as file:
             data = file.read()
-        repo.update_file('version.ini','dekete old version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/version.ini').json()['sha'],branch='main')
+        repo.update_file('/data/version.ini','dekete old version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/version.ini').json()['sha'],branch='main')
     Github.close(server)
 
 
@@ -149,10 +162,10 @@ def UploadFile(File1,VersionControlledFile):
 
 if __name__ == '__main__': #DEBUG
     logging.debug("Code Start")
-    FileVersionCheck.__run__(InputFileToRead,InputToken)
-    #VersionCompare(FileVersionCheck.Final)
+    FileVersionCheck.__run__(InputFileToRead)
+    VersionCompare(FileVersionCheck.Final)
     #print(str(FileVersionCheck.String))
-    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[0]))
-    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.String[1]))
+    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[2]))
+    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[3]))
     #DownloadFile('Zoznam.xlsx')
-    UploadFile('Zoznam.xlsx',True)
+    #UploadFile('Zoznam.xlsx',True)
