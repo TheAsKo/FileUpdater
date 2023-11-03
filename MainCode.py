@@ -21,7 +21,7 @@ import requests
 logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
 InputFileToRead=Config.Read('FILE','targetfile')
 #InputToken=Config.Read('GITHUB','token')
-InputToken='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'
+InputToken='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'
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -119,7 +119,7 @@ def DownloadFile(File,ForceDelete=0):
             logging.warning('Connecting to server failed!')
             return -1
         try :
-            Content=repo.get_contents('/data/'+FileP).decoded_content
+            Content=repo.get_contents('data/'+FileP).decoded_content
         except Exception as e :
             logging.warning(e)
             return -1
@@ -133,7 +133,7 @@ def DownloadFile(File,ForceDelete=0):
             logging.warning('Failed to write file')
             return -1
 ##############################################################################################  
-def UploadFile(File1,VersionControlledFile):
+def UploadFile(File1,VersionControlledFile=True):
     if '.xlsx' in File1:
         FileP = File1[:File1.rfind('.')]+'.data' #BEATUFIL REPLACING OF FILETYPE
     else : FileP = File1
@@ -144,15 +144,16 @@ def UploadFile(File1,VersionControlledFile):
         logging.warning('Connecting to server failed!')
         logging.warning(e)
         return -1
-    with open('Zoznam.xlsx', 'rb') as file:
+    with open(File1, 'rb') as file:
         data = file.read()
-    repo.update_file('/data/'+FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/'+FileP).json()['sha'],branch='main')
+    repo.update_file('data/'+FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/'+FileP).json()['sha'],branch='main')
     if VersionControlledFile == True:
         DownloadFile('version.ini')
-        Config.Write('EXCEL','version',FileVersionCheck.Final[3],file='version.ini')
+        Config.Write('VERSION',File1,FileVersionCheck.Final[3],file='version.ini')
         with open('version.ini', 'r') as file:
             data = file.read()
-        repo.update_file('/data/version.ini','dekete old version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/version.ini').json()['sha'],branch='main')
+        repo.update_file('data/version.ini','upload version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/version.ini').json()['sha'],branch='main')
+    FileDeletion('version.ini')
     Github.close(server)
 
 
@@ -162,10 +163,10 @@ def UploadFile(File1,VersionControlledFile):
 
 if __name__ == '__main__': #DEBUG
     logging.debug("Code Start")
-    FileVersionCheck.__run__(InputFileToRead)
-    VersionCompare(FileVersionCheck.Final)
+    FileVersionCheck.__run__(Config.Read('FILE','targetfile'))
+    #VersionCompare(FileVersionCheck.Final)
     #print(str(FileVersionCheck.String))
-    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[2]))
-    logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[3]))
+    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[2]))
+    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[3]))
     #DownloadFile('Zoznam.xlsx')
-    #UploadFile('Zoznam.xlsx',True)
+    UploadFile('Zoznam.xlsx',True)
