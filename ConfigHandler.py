@@ -8,6 +8,7 @@
 # V1.3 - Renaming of defs
 # V1.4 - Adding support of reading multiple files
 # V1.4.1 - Fixed writing in different files
+# V1.4.2 - Fixed writing bug
 ###############################################
 # Imports
 import configparser
@@ -17,6 +18,7 @@ import os
 import time
 ###############################################
 # Declarations
+config=configparser.ConfigParser()
 configparser.BasicInterpolation() #NOT WORKING NEED TO FIX FOR ADDING %
 logging.getLogger().setLevel(logging.DEBUG) #I THINK CUSTOM LOG NAME DONT WORK HERE TOO EVEN IT IS IN SEPARATE DEFS
 ###############################################
@@ -45,7 +47,7 @@ def DefaultConfigWrite(file='config.ini'): #AUTO RECOVERY DOESNT WORK BCS LIB LO
     pass
 
 def Read(value1,value2,Type=None,file='config.ini'):
-    """ Read value from file
+    """ Read value from config file
     :param value1: Config Value Category
     :type value1: str
 
@@ -93,7 +95,23 @@ def Read(value1,value2,Type=None,file='config.ini'):
         log.critical('Missing config file')
         time.sleep(10)
 
-def Write(data1,data2,value,Type=None,file='config.ini'):
+def Write(data1,data2,value,Type='str',file='config.ini'):
+    """ Write value into config file
+    :param data1: Config Value Category
+    :type data1: str
+
+    :param data2: Config Value Name
+    :type data2: str
+    
+    :param value: Value that will be written into 
+    :type value: str
+    
+    :param Type: Config Value Type , available dict,list,int,float,bool,str if not defined otherwise 
+    :type Type: str
+
+    :param file: Config File to read , default is config.ini
+    :type file: str
+    """ 
     config=configparser.ConfigParser()
     log=logging.getLogger('ConfigWrite')
     if os.path.isfile(file) == True :

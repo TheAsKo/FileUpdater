@@ -15,13 +15,18 @@ import logging
 import os
 from github import Github
 from datetime import datetime
+from datetime import timedelta
 import requests
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 ##############################################################################################
 # Declarations
 logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
 InputFileToRead=Config.Read('FILE','targetfile')
 #InputToken=Config.Read('GITHUB','token')
-InputToken='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'
+InputToken='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'
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -91,21 +96,12 @@ def VersionCompare(Data):
     return Result
 ##############################################################################################
 class VersionStringRecreating():
-    def floatHourToTime(fh): #HOURS ARE BUGGED
-        hours, hourSeconds = divmod(fh, 1)
-        minutes, seconds = divmod(hourSeconds * 60, 1)
-        return (
-            int(hours),
-            int(minutes),
-            int(seconds * 60),
-        )
     def __run__(Data):
         if Data == -1: return 'Neexistuje'
         Data = float(str(Data).replace(',','.'))
-        dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(Data) - 2)
-        hour, minute, second = VersionStringRecreating.floatHourToTime(Data % 1)
-        dt = dt.replace(hour=hour, minute=minute, second=second)     
-        return str(dt)
+        days, time_fraction = divmod(Data, 1)
+        date = datetime(1899, 12, 30) + timedelta(days + time_fraction)
+        return str(date)[:-7]
 ##############################################################################################
 def DownloadFile(File,ForceDelete=0):
         if '.xlsx' in File:
@@ -155,6 +151,28 @@ def UploadFile(File1,VersionControlledFile=True):
         repo.update_file('data/version.ini','upload version.ini',data,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/version.ini').json()['sha'],branch='main')
     FileDeletion('version.ini')
     Github.close(server)
+##############################################################################################
+def SendEmail(RecipientEmail,File,Filepath):
+    try:
+        Filepath=r''+Filepath
+        msg = MIMEMultipart()
+        msg['From'] = 'theaskobot@outlook.com'
+        msg['To'] = RecipientEmail
+        msg['Subject'] = 'Odoslanie suboru '+str(File)
+        body = "Tato sprava bola automaticky vygenerovana , prosim neodpovedajte na nu.\nV pripade akychkolvek otazok kontakujte dodavatela softveru."
+        msg.attach(MIMEText(body, 'plain'))
+        with open(Filepath, 'rb') as file:  # Attach a file
+            attach = MIMEApplication(file.read(), _subtype=File[File.rfind('.'):])
+            attach.add_header('Content-Disposition', 'attachment', filename=File)
+            msg.attach(attach)
+        with smtplib.SMTP('smtp.office365.com',587) as server:
+            server.starttls()  # Use TLS encryption
+            server.login('theaskobot@outlook.com', 'botting123')
+            server.sendmail('theaskobot@outlook.com', RecipientEmail, msg.as_string())
+    except Exception as e:
+        logging.warning(str(e))
+    finally:
+        logging.info('Email with file '+str(File)+' was send to email '+str(RecipientEmail))
 
 
 
@@ -169,4 +187,4 @@ if __name__ == '__main__': #DEBUG
     #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[2]))
     #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[3]))
     #DownloadFile('Zoznam.xlsx')
-    UploadFile('Zoznam.xlsx',True)
+    #UploadFile('Zoznam.xlsx',True)
