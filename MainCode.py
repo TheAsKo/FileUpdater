@@ -26,7 +26,7 @@ from email.mime.application import MIMEApplication
 logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
 InputFileToRead=Config.Read('FILE','targetfile')
 #InputToken=Config.Read('GITHUB','token')
-InputToken='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'
+InputToken='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'
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
