@@ -40,7 +40,7 @@ def ButtonPress(arg):
             create_gui('Main')
         case 2 :  # Upload to server
             root.wm_state('iconic')
-            Code.UploadFile(Config.Read('FILE','targetfile'))
+            Code.UploadFile(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
             if messagebox.askyesno('File Version Handler','Subor bol uspesne nahraty na server.\nChcete pokracovat v pouzivani aplikacie?') == 1 : 
                 create_gui('Main')
             else : exit()
@@ -58,12 +58,20 @@ def ButtonPress(arg):
         case 61 : # Process input window
             try:
                 Input = EmailEntry.get()
-                Code.SendEmail(Input,Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
+                print(EmailCombobox_var.get())
+                if EmailCombobox_var.get() == 'Zo servera' :
+                    pass #IDK if this is reaaaaaly needed 
+                elif EmailCombobox_var.get() == 'Lokalny subor' :
+                    Code.SendEmail(Input,Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
             except Exception as e:
-                logging.warning(e)
+                logging.debug(e)
                 logging.warning('Failed to send email!')
-                messagebox.showwarning('Email sa nepodarilo odoslat!')
-            finally:
+                if Config.Read('APP','debug','bool') == True :
+                    messagebox.showwarning('File Version Handler','Email sa nepodarilo odoslat! \n '+str(e))
+                else:
+                    messagebox.showwarning('File Version Handler','Email sa nepodarilo odoslat!')
+                create_gui('Main')
+            else:
                 if messagebox.askyesno('File Version Handler','Subor bol uspesne odoslany na email.\nChcete pokracovat v pouzivani aplikacie?') == 1 : 
                     create_gui('Main')
                 else : exit()
@@ -71,10 +79,25 @@ def ButtonPress(arg):
         case 8 : pass # Manual mode upload
         case 9 :  # Manual mode email
             create_gui('Input',9)
-        case 91 : # Process input window #NOT FINISHED
+        case 91 : # Process input window
             root.wm_state('iconic')
-            Input = EmailEntry.get()
             file=filedialog.askopenfilename(title='Vyberte subor na odoslanie:',initialdir=Config.Read('FILE','targetfilepath'))
+            Input = EmailEntry.get()
+            root.wm_state('normal')
+            try :
+                Code.SendEmail(Input,os.path.relpath(file),file)
+            except Exception as e:
+                logging.debug(e)
+                logging.warning('Failed to send email!')
+                if Config.Read('APP','debug','bool') == True :
+                    messagebox.showwarning('File Version Handler','Email sa nepodarilo odoslat! \n '+str(e))
+                else:
+                    messagebox.showwarning('File Version Handler','Email sa nepodarilo odoslat!')
+                create_gui('Main')
+            else:
+                if messagebox.askyesno('File Version Handler','Subor bol uspesne odoslany na email.\nChcete pokracovat v pouzivani aplikacie?') == 1 : 
+                    create_gui('Main')
+                else : exit()
             
 ##############################################################################################
 def create_gui(WindowID,ID=0):
@@ -84,13 +107,14 @@ def create_gui(WindowID,ID=0):
         case 'Main' : mainframe = MainWindow(root)
         case 'Input' : mainframe = InputWindow(root,ID)
     mainframe.pack(padx=10, pady=10)
+    root.wm_state('normal')
 ##############################################################################################
 #  WindowCreation
 #  Main Window
 def MainWindow(root):
 
     try: #### IDK WHERE TO PLACE THIS
-        Code.FileVersionCheck.__run__(Config.Read('FILE','targetfile'))
+        Code.FileVersionCheck.__run__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
     except:
         logging.critical('Failed to initialize code')
 
@@ -109,8 +133,9 @@ def MainWindow(root):
     ttk.Button(frame, text="Poslat sledovany subor emailom",command=lambda:ButtonPress(6),width=30).grid(column=3, row=5, sticky=N)
     ttk.Button(frame, text="Manual stiahnutie",command=lambda:ButtonPress(7),state=DISABLED,width=30).grid(column=1, row=6, sticky=N)
     ttk.Button(frame, text="Manual nahratie",command=lambda:ButtonPress(8),state=DISABLED,width=30).grid(column=2, row=6, sticky=N)
-    ttk.Button(frame, text="Manual email",command=lambda:ButtonPress(9),state=DISABLED,width=30).grid(column=3, row=6, sticky=N)
-    
+    ttk.Button(frame, text="Manual email",command=lambda:ButtonPress(9),width=30).grid(column=3, row=6, sticky=N)
+    ttk.Button(frame, text="Obnovenie",command=lambda:create_gui('Main'),width=30).grid(column=3, row=2, sticky=N)
+
     for child in frame.winfo_children(): 
         child.grid_configure(padx=5, pady=5)
     return frame
@@ -118,18 +143,22 @@ def MainWindow(root):
 ###
 def InputWindow(root,ButtonID):
     global EmailEntry
+    global EmailCombobox_var
     frame = ttk.Frame(root, padding="12 12 12 12")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
-    ttk.Label(frame, text='Zadajte prosim email:').grid(column=2, row=1)
-    EmailEntry = ttk.Entry(frame)
-    EmailEntry.grid(row=2, column=2)
-    ttk.Button(frame, text="Get Input", command=lambda:ButtonPress(61)).grid(row=3, column=2)
-    ttk.Label(frame, text='Vyberte si aky subor sa ma pouzit:').grid(column=2, row=4)
+    ttk.Label(frame, text='Zadajte prosim email:').grid(column=2, row=1,sticky=N)
+    EmailEntry = ttk.Entry(frame , width=40)
+    EmailEntry.grid(row=2, column=2,sticky=N)
+    EmailCombobox_var = StringVar()
+    EmailCombobox_var.set('Lokalny subor')
+    ttk.Button(frame, text="Potvrdit email", command=lambda:ButtonPress(ButtonID*10+1)).grid(row=3, column=2,sticky=N)
     match ButtonID :
         case 6 :
-            EmailCombobox = ttk.Combobox(frame, values=["Zo servera", "Lokalny subor"])
+            ttk.Label(frame, text='Vyberte si aky subor sa ma pouzit:').grid(column=2, row=4)
+            EmailCombobox = ttk.Combobox(frame,textvariable=EmailCombobox_var,values=["Zo servera", "Lokalny subor"])
             EmailCombobox.grid(row=5, column=2)
         case 9 | _ :
+            EmailCombobox_var = -1
             pass
     for child in frame.winfo_children(): 
         child.grid_configure(padx=5, pady=5)
@@ -141,11 +170,14 @@ def InputWindow(root,ButtonID):
 if __name__ == '__main__':
     logging.debug("UI Start")
     root = Tk()
-    root.title("File Version Handler") 
+    root.title("File Version Handler")
+    root.resizable(False, False) 
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     mainframe = ttk.Frame() # LAZY FIXING OF ERROR
     create_gui('Main')
+    root.update_idletasks()
+    #root.geometry(f"{mainframe.winfo_reqwidth()}x{mainframe.winfo_reqheight()}") I would like to have this on but idk how to autoupdate depending on window + even first window is somehow broken
     center(root)
     root.wm_state('normal')
     root.mainloop()
