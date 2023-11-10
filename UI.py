@@ -12,8 +12,21 @@ import subprocess
 import time
 import os
 ##############################################################################################
-# Declarations
-logging.getLogger().setLevel(logging.DEBUG)
+# Logging
+logging.getLogger().setLevel(Config.Read('APP','logging','int'))
+# File handler for writing logs to a file
+if Config.Read('APP','errorlogging','bool') == True:
+    file_handler = logging.FileHandler("logfile.txt")
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(file_formatter)
+    logging.getLogger().addHandler(file_handler)
+# Console handler for writing logs to the console
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(console_formatter)
+logging.getLogger().addHandler(console_handler)
 ##############################################################################################
 # Classes and Definitions
 def center(win):
@@ -34,7 +47,7 @@ def ButtonPress(arg):
     match arg:
         case 1 : # Download from server
             root.wm_state('iconic')
-            Code.DownloadFile(Config.Read('FILE','targetfile'))
+            Code.DownloadFile(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'),Code.FileVersionCheck.Final['Time'][1])
             if messagebox.askyesno('File Version Handler','Subor bol uspesne stiahnuty.\nChcete ho otvorit?') == 1 : 
                 subprocess.Popen(r'explorer "'+Config.Read('FILE','targetfile'))
             create_gui('Main')
@@ -57,11 +70,10 @@ def ButtonPress(arg):
             create_gui('Input',6)
         case 61 : # Process input window
             try:
-                Input = EmailEntry.get()
-                print(EmailCombobox_var.get())
-                if EmailCombobox_var.get() == 'Zo servera' :
+                Input = InputEntry1.get()
+                if InputCombo1_var.get() == 'Zo servera' :
                     pass #IDK if this is reaaaaaly needed 
-                elif EmailCombobox_var.get() == 'Lokalny subor' :
+                elif InputCombo1_var.get() == 'Lokalny subor' :
                     Code.SendEmail(Input,Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
             except Exception as e:
                 logging.debug(e)
@@ -82,7 +94,7 @@ def ButtonPress(arg):
         case 91 : # Process input window
             root.wm_state('iconic')
             file=filedialog.askopenfilename(title='Vyberte subor na odoslanie:',initialdir=Config.Read('FILE','targetfilepath'))
-            Input = EmailEntry.get()
+            Input = InputEntry1.get()
             root.wm_state('normal')
             try :
                 Code.SendEmail(Input,os.path.relpath(file),file)
@@ -98,6 +110,22 @@ def ButtonPress(arg):
                 if messagebox.askyesno('File Version Handler','Subor bol uspesne odoslany na email.\nChcete pokracovat v pouzivani aplikacie?') == 1 : 
                     create_gui('Main')
                 else : exit()
+        #case 10 : #Update Github Token
+        #    Input = InputEntry1.get()
+        #    Config.Write('GITHUB','token',Input)
+        #    create_gui('Main')
+        case 11 : # Turn debugging on/off
+            create_gui('Input',11)
+        case 111 : 
+            Input = InputEntry1.get()
+            if Input == '6679' :
+                if Config.Read('APP','debug','bool') == True : #ADD HANDLE FOR ERRORLOGGING
+                    Config.Write('APP','debug','False','bool')
+                else : Config.Write('APP','debug','True','bool')
+                create_gui('Main')
+            else : 
+                messagebox.showwarning('File Version Handler','Nespravne heslo!')
+                create_gui('Main')
             
 ##############################################################################################
 def create_gui(WindowID,ID=0):
@@ -112,20 +140,28 @@ def create_gui(WindowID,ID=0):
 #  WindowCreation
 #  Main Window
 def MainWindow(root):
-
+    
     try: #### IDK WHERE TO PLACE THIS
-        Code.FileVersionCheck.__run__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
-    except:
+        Code.FileVersionCheck.__runos__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
+    except Exception as e: #NOT WORKING
         logging.critical('Failed to initialize code')
-
+        print(f"Caught an exception: {e}")
+        print(f"Exception type: {type(e)}")
+        print(f"Exception args: {e.args}")
+        if '401' in str(e) :
+            #create_gui('Input','GithubToken')
+            pass
+        
     frame = ttk.Frame(root, padding="12 12 12 12")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
     ttk.Label(frame, text="Sledovany subor: "+Config.Read('FILE','targetfile')).grid(column=1, row=1, sticky=W)
-    ttk.Label(frame, text="Lokalna verzia: "+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.Final[3])).grid(column=1, row=2, sticky=W)
-    ttk.Label(frame, text='Verzia na servery: '+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.Final[2])).grid(column=1, row=3, sticky=W)
-    if Code.VersionCompare(Code.FileVersionCheck.Final)[1] <= 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),width=30).grid(column=1, row=4, sticky=N)
+    ttk.Label(frame, text="Lokalna verzia: "+str(Code.FileVersionCheck.Final['Time'][0])).grid(column=1, row=2, sticky=W)
+    ttk.Label(frame, text='Verzia na servery: '+str(Code.FileVersionCheck.Final['Time'][1])).grid(column=1, row=3, sticky=W)
+    #ttk.Label(frame, text="Lokalna verzia: "+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.Final[3])).grid(column=1, row=2, sticky=W)
+    #ttk.Label(frame, text='Verzia na servery: '+Code.VersionStringRecreating.__run__(Code.FileVersionCheck.Final[2])).grid(column=1, row=3, sticky=W)
+    if Code.VersionCompareOS(Code.FileVersionCheck.Final)[1] == 1 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),width=30).grid(column=1, row=4, sticky=N)
     else : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),state=DISABLED,width=30).grid(column=1, row=4, sticky=N)
-    if Code.VersionCompare(Code.FileVersionCheck.Final)[1] != 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),width=30).grid(column=2, row=4, sticky=N)
+    if Code.VersionCompareOS(Code.FileVersionCheck.Final)[1] == 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),width=30).grid(column=2, row=4, sticky=N)
     else : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),state=DISABLED,width=30).grid(column=2, row=4, sticky=N)
     ttk.Button(frame, text="Vypnut aplikaciu",command=lambda:ButtonPress(3),width=30).grid(column=3, row=4, sticky=N)
     ttk.Button(frame, text="Aktualizovat aplikaciu",command=lambda:ButtonPress(4),state=DISABLED,width=30).grid(column=1, row=5, sticky=N)
@@ -135,31 +171,40 @@ def MainWindow(root):
     ttk.Button(frame, text="Manual nahratie",command=lambda:ButtonPress(8),state=DISABLED,width=30).grid(column=2, row=6, sticky=N)
     ttk.Button(frame, text="Manual email",command=lambda:ButtonPress(9),width=30).grid(column=3, row=6, sticky=N)
     ttk.Button(frame, text="Obnovenie",command=lambda:create_gui('Main'),width=30).grid(column=3, row=2, sticky=N)
-
+    ttk.Button(frame, text='Debug: '+str(Config.Read('APP','debug','bool')),command=lambda:ButtonPress(11),width=30).grid(column=3, row=3, sticky=N)
+        
     for child in frame.winfo_children(): 
         child.grid_configure(padx=5, pady=5)
     return frame
 
 ###
-def InputWindow(root,ButtonID):
-    global EmailEntry
-    global EmailCombobox_var
+def InputWindow(root,WindowID):
+    global InputEntry1
+    global InputCombo1_var
     frame = ttk.Frame(root, padding="12 12 12 12")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
-    ttk.Label(frame, text='Zadajte prosim email:').grid(column=2, row=1,sticky=N)
-    EmailEntry = ttk.Entry(frame , width=40)
-    EmailEntry.grid(row=2, column=2,sticky=N)
-    EmailCombobox_var = StringVar()
-    EmailCombobox_var.set('Lokalny subor')
-    ttk.Button(frame, text="Potvrdit email", command=lambda:ButtonPress(ButtonID*10+1)).grid(row=3, column=2,sticky=N)
-    match ButtonID :
+    InputEntry1 = ttk.Entry(frame , width=40)
+    InputEntry1.grid(row=2, column=2,sticky=N)
+    InputCombo1_var = StringVar()
+    InputCombo1_var.set('Lokalny subor')
+    
+    match WindowID :
         case 6 :
+            ttk.Label(frame, text='Zadajte prosim email:').grid(column=2, row=1,sticky=N)
             ttk.Label(frame, text='Vyberte si aky subor sa ma pouzit:').grid(column=2, row=4)
-            EmailCombobox = ttk.Combobox(frame,textvariable=EmailCombobox_var,values=["Zo servera", "Lokalny subor"])
-            EmailCombobox.grid(row=5, column=2)
-        case 9 | _ :
-            EmailCombobox_var = -1
-            pass
+            ttk.Button(frame, text="Potvrdit email", command=lambda:ButtonPress(WindowID*10+1)).grid(row=3, column=2,sticky=N)
+            InputCombo1 = ttk.Combobox(frame,textvariable=InputCombo1_var,values=["Zo servera", "Lokalny subor"])
+            InputCombo1.grid(row=5, column=2)
+        case 9 :
+            ttk.Label(frame, text='Zadajte prosim email:').grid(column=2, row=1,sticky=N)
+            ttk.Button(frame, text="Potvrdit email", command=lambda:ButtonPress(WindowID*10+1)).grid(row=3, column=2,sticky=N)
+        case 'GithubToken' :
+            ttk.Label(frame, text='Zadajte prosim token:').grid(column=2, row=1,sticky=N)
+            ttk.Button(frame, text="Potvrdit", command=lambda:ButtonPress(10)).grid(row=3, column=2,sticky=N)
+        case 11 :
+            ttk.Label(frame, text='Zadajte prosim heslo:').grid(column=2, row=1,sticky=N)
+            ttk.Button(frame, text="Potvrdit", command=lambda:ButtonPress(111)).grid(row=3, column=2,sticky=N)
+            
     for child in frame.winfo_children(): 
         child.grid_configure(padx=5, pady=5)
     return frame
