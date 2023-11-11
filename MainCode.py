@@ -26,23 +26,26 @@ from email.mime.application import MIMEApplication
 InputFileToRead=Config.Read('FILE','targetfile')
 InputToken=Config.Read('GITHUB','token')
 #InputToken=''
-################
-###############################################################################
+###############################################################################################
 # Logging
-logging.getLogger().setLevel(Config.Read('APP','logging','int')) #logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50
-# File handler for writing logs to a file
-if Config.Read('APP','errorlogging','bool') == True:
-    file_handler = logging.FileHandler("logfile.txt")
-    file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(file_formatter)
-    logging.getLogger().addHandler(file_handler)
-# Console handler for writing logs to the console
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(console_formatter)
-logging.getLogger().addHandler(console_handler)
+# Check if handlers are already added
+if not logging.getLogger().hasHandlers():
+    logging.getLogger().setLevel(Config.Read('APP', 'logging', 'int'))
+
+    # File handler for writing logs to a file
+    if Config.Read('APP', 'errorlogging', 'bool'):
+        file_handler = logging.FileHandler("app.log")
+        file_handler.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(file_formatter)
+        logging.getLogger().addHandler(file_handler)
+
+    # Console handler for writing logs to the console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_formatter)
+    logging.getLogger().addHandler(console_handler)
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -100,16 +103,6 @@ class FileVersionCheck():
         FileVersionCheck.GitPull = values
         return values    
     
-    def __run__(FileToRead,FilepathToRead): #DEPRECATED
-        Result=[LocalVersion] #THIS FORMATTING COULD BE CLEANED UP ALSO DUAL RUNS DEF
-        FileVersionCheck.GithubFileVersion(FileToRead)
-        Result.append(FileVersionCheck.GitPull[0])
-        Result.append(FileVersionCheck.GitPull[1])
-        #FileVersionCheck.String.append(FileVersionCheck.GithubFileVersion()[1])
-        Result.append(FileVersionCheck.LocalFileVersionExcel(FilepathToRead))
-        logging.info('Version Checks: '+str(Result))
-        FileVersionCheck.Final=Result
-        return Result
     def __runos__(FileToRead,FilepathToRead):
         Result = {'App':[],'File':[],'Time':[]}
         Result['App'].append(LocalVersion)
@@ -123,34 +116,6 @@ class FileVersionCheck():
         FileVersionCheck.Final=Result
         return Result #Should clean all not needed return like this one
 ##############################################################################################
-def VersionCompare(Data): #DEPRECATED
-    #for i in range(len(Data)): #Check for errors
-        #if Data['App'][i] == -1 or Data['File'][i] == -1:
-         #   logging.warning('Something went wrong! Unable to verity version!')
-    if Data[0]==Data[1]:Result=[0]
-    elif Data[0]>Data[1]:Result=[1]
-    elif Data[0]<Data[1]:Result=[2]
-    if Data[2]==Data[3]:Result.append(0)
-    elif Data[2]>Data[3]:Result.append(1)
-    elif Data[2]<Data[3]:Result.append(2)
-    logging.debug('Version Compare: App-'+str(Result[0])+' File-'+str(Result[1]))
-    logging.debug('0=Same,1=Remote is newer,2=Local is newer')
-    return Result
-##############################################################################################
-def VersionCompareOSOld(Data): #DEPRECATED , again :)
-    #for i in range(len(Data)): #Check for errors
-        #if Data['App'][i] == -1 or Data['File'][i] == -1:
-         #   logging.warning('Something went wrong! Unable to verity version!')
-    if Data['App'][0]==Data['App'][1]:Result=[0]
-    elif Data['App'][0]>Data['App'][1]:Result=[1]
-    elif Data['App'][0]<Data['App'][1]:Result=[2]
-    if Data['File'][0]==Data['File'][1]:Result.append(0)
-    elif Data['File'][0]>Data['File'][1]:Result.append(1)
-    elif Data['File'][0]<Data['File'][1]:Result.append(2)
-    logging.debug('Version Compare: App-'+str(Result[0])+' File-'+str(Result[1]))
-    logging.debug('0=Same,1=Remote is newer,2=Local is newer')
-    return Result
-##############################################################################################
 def VersionCompareOS(Data): #Currently calling unnecessary two times ( i think return coding is not great for not changing values)
     Result = []
     for each in Data:
@@ -159,14 +124,6 @@ def VersionCompareOS(Data): #Currently calling unnecessary two times ( i think r
     logging.debug('Version Compare: App-'+str(Result[0])+' File-'+str(Result[1]))
     logging.debug('0=Same,1=Remote is newer,2=Local is newer')
     return Result
-##############################################################################################
-class VersionStringRecreating(): #DEPRECATED
-    def __run__(Data):
-        if Data == -1: return 'Neexistuje'
-        Data = float(str(Data).replace(',','.')) #USED IN EXCEL XC
-        days, time_fraction = divmod(Data, 1)
-        date = datetime(1899, 12, 30) + timedelta(days + time_fraction)
-        return str(date)[:-7]
 ##############################################################################################
 def DownloadFile(Filename,Filepath='',NewTime='',ForceDelete=0):
         if '.xlsx' in Filename:
@@ -245,17 +202,10 @@ def SendEmail(RecipientEmail,File,Filepath):
         logging.info('Email with file '+str(File)+' was send to email '+str(RecipientEmail))
 
 
-
-
-
-
 if __name__ == '__main__': #DEBUG
     logging.debug("Code Start")
     FileVersionCheck.__runos__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
     print('-----------------------')
-    #FileVersionCheck.__run__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
     VersionCompareOS(FileVersionCheck.Final)
-    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[2]))
-    #logging.debug(VersionStringRecreating.__run__(FileVersionCheck.Final[3]))
     #DownloadFile('Zoznam.xlsx')
     #UploadFile('Zoznam.xlsx',True)

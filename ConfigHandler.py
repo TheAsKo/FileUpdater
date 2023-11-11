@@ -1,5 +1,5 @@
 # Config File - Default Create + Reading + Writing
-# V1.4.1
+# V2.0
 ###############################################
 # Changelog
 # V1.0 - Initial commit
@@ -9,20 +9,21 @@
 # V1.4 - Adding support of reading multiple files
 # V1.4.1 - Fixed writing in different files
 # V1.4.2 - Fixed writing bug
+# V2.0 - Full code cleanup/rewrite , better error handling , writing no longer uses anything other than str to write to .ini
 ###############################################
 # Imports
 import configparser
 import logging
 import json
 import os
-import time
+from typing import Union
 ###############################################
 # Declarations
 config=configparser.ConfigParser()
-configparser.BasicInterpolation() #NOT WORKING NEED TO FIX FOR ADDING %
+#configparser.BasicInterpolation() #NOT WORKING NEED TO FIX FOR ADDING %
 logging.getLogger().setLevel(logging.DEBUG) #I THINK CUSTOM LOG NAME DONT WORK HERE TOO EVEN IT IS IN SEPARATE DEFS
 ###############################################
-def DefaultConfigWrite(file='config.ini'): #AUTO RECOVERY DOESNT WORK BCS LIB LOADS FASTER THAN I CAN REFRESH FILE I THINK , MAYBE I CAN MOVE ALL VARS OUT OF LIBS
+def DefaultConfigWrite(file='config.ini'):
     config=configparser.ConfigParser()
     config['APP'] = {'Logging' : '10',
                      'HelpKeys' : 'logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50',
@@ -46,91 +47,86 @@ def DefaultConfigWrite(file='config.ini'): #AUTO RECOVERY DOESNT WORK BCS LIB LO
         config.write(configfile)
     pass
 
-def Read(value1,value2,Type=None,file='config.ini'):
-    """ Read value from config file
-    :param value1: Config Value Category
-    :type value1: str
+def Read(value1: str, value2: str, ValType: Union[str,int,dict,list,float,bool] = str, file: str = 'config.ini'):
+    """Read value from config file.
 
-    :param value2: Config Value Name
-    :type value2: str
-    
-    :param Type: Config Value Type , available dict,list,int,float,bool,str if not defined otherwise 
-    :type Type: str
+    Args:
+        Value1 (str): Config Value Category.
+        Value2 (str): Config Value Name.
+        ValType (Union[str,int,dict,list,float,bool]): Config Value Type, available options are dict, list, int, float, bool, str; defaults to None.
+        file (str): Config File to read, default is config.ini.
 
-    :param file: Config File to read , default is config.ini
-    :type file: str
-    """ 
-    config=configparser.ConfigParser()
-    log=logging.getLogger('ConfigRead')
-    if os.path.isfile(file) == True :
-        config.read(file)
-        ValueX=config[value1]
-        match Type:
-            case 'dict' | 'list' : 
-                try : 
-                    return json.loads(ValueX[value2])
-                except:
-                    log.warning("Requested value "+str(value2)+" failed to load as dictionary/list!")
-            case 'int' : 
-                try:
-                    return ValueX.getint(value2)
-                except:
-                    log.warning("Requested value "+str(value2)+" is not integer!")
-            case 'float' : 
-                try:
-                    return ValueX.getfloat(value2)
-                except:
-                    log.warning("Requested value "+str(value2)+" is not float!")
-            case 'bool' : 
-                try:
-                    return ValueX.getboolean(value2)
-                except:
-                    log.warning("Requested value "+str(value2)+" is not bool!")
-            case _ : 
-                try:
-                    return ValueX[value2]
-                except:
-                    log.warning("Requested value "+str(value2)+" failed to load!")
-    else :
-        log.critical('Missing config file')
-        time.sleep(10)
+    Returns:
+        The requested config value.
 
-def Write(data1,data2,value,Type='str',file='config.ini'):
-    """ Write value into config file
-    :param data1: Config Value Category
-    :type data1: str
+    """
+    config = configparser.ConfigParser()
+    log = logging.getLogger('ConfigRead')
 
-    :param data2: Config Value Name
-    :type data2: str
-    
-    :param value: Value that will be written into 
-    :type value: str
-    
-    :param Type: Config Value Type , available dict,list,int,float,bool,str if not defined otherwise 
-    :type Type: str
+    try:
+        if os.path.isfile(file):
+            config.read(file)
+            ValueX = config[value1]
+            match ValType:
+                case 'dict' | 'list':
+                    try:
+                        return json.loads(ValueX[value2])
+                    except:
+                        log.warning(f"Requested value {value2} failed to load as dictionary/list from {file}!")
+                case 'int':
+                    try:
+                        return ValueX.getint(value2)
+                    except:
+                        log.warning(f"Requested value {value2} is not an integer from {file}!")
+                case 'float':
+                    try:
+                        return ValueX.getfloat(value2)
+                    except:
+                        log.warning(f"Requested value {value2} is not a float from {file}!")
+                case 'bool':
+                    try:
+                        return ValueX.getboolean(value2)
+                    except:
+                        log.warning(f"Requested value {value2} is not a boolean from {file}!")
+                case 'str' | _ : 
+                    try:
+                        return ValueX[value2]
+                    except:
+                        log.warning(f"Requested value {value2} failed to load from {file}!")
+        else:
+            raise FileNotFoundError(f"Config file not found: {file}")
+    except Exception as e:
+        log.error(f"An unexpected error occurred: {str(e)}")
 
-    :param file: Config File to read , default is config.ini
-    :type file: str
-    """ 
-    config=configparser.ConfigParser()
-    log=logging.getLogger('ConfigWrite')
-    if os.path.isfile(file) == True :
-        config.read(file)
-        match Type:
-            case 'list' | 'dict':
-                log.critical('Not Finished') #NEED TO FINISH
-            case 'int' | 'float' | 'bool' | 'str' | 'listfull' | 'dictfull' : #full not tested
-                try :
-                    config[data1][data2]=str(value)
-                except:
-                    log.warning('Updating value of '+str(data2)+' failed!')
-                else:
-                    log.debug('Edited value of '+str(data2)+' to: '+str(value))
-        with open(file, 'w') as configfile:
-            config.write(configfile)
-    else :
-        log.critical('Missing config file')
-        time.sleep(10)
+def Write(data1: str, data2: str, value: str, file: str = 'config.ini'):
+    """Write value into config file.
+
+    Args:
+        data1 (str): Config Value Category.
+        data2 (str): Config Value Name.
+        value (str): Value that will be written into.
+        file (str): Config File to read, default is config.ini.
+
+    """
+    config = configparser.ConfigParser()
+    log = logging.getLogger('ConfigWrite')
+
+    try:
+        if os.path.isfile(file):
+            config.read(file)
+            try:
+                config[data1][data2] = str(value)
+            except Exception as e:
+                log.warning(f'Updating value of {data2} failed: {e}')
+            else:
+                log.debug(f'Edited value of {data2} to: {value}')
+
+            with open(file, 'w') as configfile:
+                config.write(configfile)
+        else:
+            raise FileNotFoundError(f"Config file not found: {file}")
+    except Exception as e:
+        log.error(f"An unexpected error occurred: {str(e)}")
         
         
 if __name__ == '__main__': #USED FOR MY EASE OF GENERATING CONFIG FILE
