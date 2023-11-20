@@ -15,7 +15,6 @@ import logging
 import os
 from github import Github
 from datetime import datetime
-from datetime import timedelta
 import requests
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -27,25 +26,27 @@ InputFileToRead=Config.Read('FILE','targetfile')
 InputToken=Config.Read('GITHUB','token')
 #InputToken=''
 ###############################################################################################
-# Logging
-# Check if handlers are already added
-if not logging.getLogger().hasHandlers():
-    logging.getLogger().setLevel(Config.Read('APP', 'logging', 'int'))
-
-    # File handler for writing logs to a file
-    if Config.Read('APP', 'errorlogging', 'bool'):
-        file_handler = logging.FileHandler("app.log")
-        file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(file_formatter)
-        logging.getLogger().addHandler(file_handler)
-
-    # Console handler for writing logs to the console
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(console_formatter)
-    logging.getLogger().addHandler(console_handler)
+# Logging #NOT USED HERE BCS THIS CODE WIIL ALWAYS RUN IN DEBUG ONLY
+def Logging():
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        root_logger.removeHandler(handler)
+        handler.close()
+    if not root_logger.hasHandlers():
+        root_logger.setLevel(Config.Read('APP', 'logging', 'int'))
+        if Config.Read('APP', 'errorlogging', 'bool'):
+            file_handler = logging.FileHandler("app.log")
+            file_handler.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(file_formatter)
+            root_logger.addHandler(file_handler)
+        if os.path.exists("app.log") and Config.Read('APP', 'errorlogging', 'bool') == False :
+            os.remove("app.log")
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
 ##############################################################################################
 logging.debug('Loading Main Code') # :)
 ##############################################################################################
@@ -62,6 +63,7 @@ def FileDeletion(file):
 class FileVersionCheck():
     Final=[]
     GitPull=[]
+    VersionFinal=[]
     def LocalFileVersionExcel(FilepathToRead):
         try :
             WB = openpyxl.load_workbook(FilepathToRead,data_only=True)['Main']
@@ -80,7 +82,7 @@ class FileVersionCheck():
         except Exception as e:
             logging.debug(str(e))
             logging.warning('Reading of modified time failed for file '+str(FilepathToRead))
-            return -1
+            return [int(-1),int(-1)]
         logging.debug('Local File :'+str(mod_time))
         return mod_time
     
@@ -103,6 +105,18 @@ class FileVersionCheck():
         FileVersionCheck.GitPull = values
         return values    
     
+    def VersionCompareOS(Data): 
+        Result = []
+        for each in Data:
+            if all(isinstance(value, (int, float)) for value in Data[each]):
+                if Data[each].count(max(Data[each])) > 1 : Result.append(0)
+                else : Result.append(Data[each].index(max(Data[each]))+1)
+        else : Result.append(0) #WEIRD ERROR  
+        logging.debug('Version Compare: App-'+str(Result[0])+' File-'+str(Result[1]))
+        logging.debug('0=Same,1=Remote is newer,2=Local is newer')
+        FileVersionCheck.VersionFinal = Result
+        #return Result #calling unnecessary two times (i think return coding is not great for not changing values)
+        
     def __runos__(FileToRead,FilepathToRead):
         Result = {'App':[],'File':[],'Time':[]}
         Result['App'].append(LocalVersion)
@@ -110,20 +124,14 @@ class FileVersionCheck():
         Result['App'].append(FileVersionCheck.GitPull[0])
         Result['File'].append(FileVersionCheck.GitPull[1])
         Result['File'].append(FileVersionCheck.LocalFileVersionOS(FilepathToRead)[0])
+        try :
+            Result['Time'].append(datetime.fromtimestamp(FileVersionCheck.GitPull[1]).strftime('%Y-%m-%d %H:%M:%S'))
+        except : Result['Time'].append(int(-1))
         Result['Time'].append(FileVersionCheck.LocalFileVersionOS(FilepathToRead)[1])
-        Result['Time'].append(datetime.fromtimestamp(FileVersionCheck.GitPull[1]).strftime('%Y-%m-%d %H:%M:%S'))
         logging.info('Version Checks: '+str(Result))
         FileVersionCheck.Final=Result
-        return Result #Should clean all not needed return like this one
-##############################################################################################
-def VersionCompareOS(Data): #Currently calling unnecessary two times ( i think return coding is not great for not changing values)
-    Result = []
-    for each in Data:
-        if Data[each].count(max(Data[each])) > 1 : Result.append(0)
-        else :Result.append(Data[each].index(max(Data[each]))+1)  
-    logging.debug('Version Compare: App-'+str(Result[0])+' File-'+str(Result[1]))
-    logging.debug('0=Same,1=Remote is newer,2=Local is newer')
-    return Result
+        FileVersionCheck.VersionCompareOS(Result)
+        #return Result #Should clean all not needed return like this one
 ##############################################################################################
 def DownloadFile(Filename,Filepath='',NewTime='',ForceDelete=0):
         if '.xlsx' in Filename:
@@ -205,7 +213,5 @@ def SendEmail(RecipientEmail,File,Filepath):
 if __name__ == '__main__': #DEBUG
     logging.debug("Code Start")
     FileVersionCheck.__runos__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
-    print('-----------------------')
-    VersionCompareOS(FileVersionCheck.Final)
     #DownloadFile('Zoznam.xlsx')
     #UploadFile('Zoznam.xlsx',True)

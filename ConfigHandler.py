@@ -28,20 +28,9 @@ def DefaultConfigWrite(file='config.ini'):
     config['APP'] = {'Logging' : '10',
                      'HelpKeys' : 'logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50',
                      'Debug' : 'False'}
-    config['FILE'] = {'TargetFile' : 'Zoznam.xlsx'}
+    config['FILE'] = {'TargetFile' : 'Zoznam.xlsx',
+                      'targetfilepath' : r'C:\Users\mobil\Desktop\VSCode-FileUpdater\Zoznam.xlsx'}
     config['GITHUB'] = {'Token' : ''}
-    #config['MAIN'] = {'OnlyRootDebug':'True',
-    #                'tess_cmd':'C:/Users/nsz.fu.montaz/AppData/Local/Tesseract-OCR/tesseract.exe',
-    #                'tessdefault_config':'--psm 7 --oem 3',
-    #                'tessnumber_config':'--psm 3 --oem 3 -c tessedit_char_whitelist=0123456789 tessedit_char_blacklist ,._/',
-    #                'tessadvnumber_config':'--psm 3 --oem 3 -c tessedit_char_whitelist=0123456789., tessedit_char_blacklist _/',
-    #                'DeleteImagesAfterUsage':'True',
-    #                'LoggerLevel':'DEBUG',
-    #                'TimeDEBUG':'True'}
-    #config['MAIN']['URLList'] = '["https://wf-nsm.neuman.at/clients/wf-login/#/","http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/349)","http://wf-nsm.neuman.at/clients/wf-mes/sk/#/wfmes/view/(mainview:msc/346)"]'
-    #config['MAIN']['SheetDict'] = '{"TimeFlag":["A2","1"],"TimeSend":["B2","1"],"OEE":["C2","1"],"OK":["D2","1"],"NOK":["E2","1"],"Product":["F2","1"],"Scrap":["G2","1"],"Norm":["H2","1"]}'
-    #config['MAIN']['LoadCheck'] = '{"LoadCheck":[0,980,180,40],"ScrapLoadCheck":[1820,230,70,70]}'
-    #config['TIMECODE']['ThreadDict'] = '{"MachineName":["FILL","PETIG2"],"MachineURL":[1,2],"ShiftCheck":[8,12],"MachineActive":[1,1]}'
 
     with open(file, 'w') as configfile:
         config.write(configfile)
