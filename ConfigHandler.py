@@ -27,7 +27,8 @@ def DefaultConfigWrite(file='config.ini'):
     config=configparser.ConfigParser()
     config['APP'] = {'Logging' : '10',
                      'HelpKeys' : 'logging.DEBUG = 10 , logging.INFO = 20 , logging.WARNING = 30 , logging.CRITICAL = 50',
-                     'Debug' : 'False'}
+                     'Debug' : 'False',
+                     'errorlogging' : 'False'}
     config['FILE'] = {'TargetFile' : 'Zoznam.xlsx',
                       'targetfilepath' : r'C:\Users\mobil\Desktop\VSCode-FileUpdater\Zoznam.xlsx'}
     config['GITHUB'] = {'Token' : ''}
@@ -83,7 +84,12 @@ def Read(value1: str, value2: str, ValType: Union[str,int,dict,list,float,bool] 
                     except:
                         log.warning(f"Requested value {value2} failed to load from {file}!")
         else:
-            raise FileNotFoundError(f"Config file not found: {file}")
+            #raise FileNotFoundError(f"Config file not found: {file}")
+            log.warning(f"Config file not found: {file}")
+            log.info("Generating default config...")
+            DefaultConfigWrite(file)
+            return Read(value1, value2, ValType, file)  # Retry after generating default config
+
     except Exception as e:
         log.error(f"An unexpected error occurred: {str(e)}")
 
@@ -120,3 +126,4 @@ def Write(data1: str, data2: str, value: str, file: str = 'config.ini'):
         
 if __name__ == '__main__': #USED FOR MY EASE OF GENERATING CONFIG FILE
     DefaultConfigWrite()
+    logging.debug('Success')

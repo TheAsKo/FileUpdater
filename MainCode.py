@@ -13,7 +13,7 @@ import ConfigHandler as Config
 import openpyxl
 import logging
 import os
-from github import Github
+from github import Github , GithubException
 from datetime import datetime
 import requests
 import smtplib
@@ -22,8 +22,8 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 ##############################################################################################
 # Declarations
-InputFileToRead=Config.Read('FILE','targetfile')
-InputToken=Config.Read('GITHUB','token')
+#InputFileToRead=Config.Read('FILE','targetfile')
+#InputToken=Config.Read('GITHUB','token')
 #InputToken=''
 ###############################################################################################
 # Logging #NOT USED HERE BCS THIS CODE WIIL ALWAYS RUN IN DEBUG ONLY
@@ -137,14 +137,19 @@ def DownloadFile(Filename,Filepath='',NewTime='',ForceDelete=0):
         if '.xlsx' in Filename:
             FileP = Filename[:Filename.rfind('.')]+'.data' #BEATUFIL REPLACING OF FILETYPE
         else : FileP = Filename
-        try :
-            server=Github(InputToken)
-            repo=server.get_repo('TheAsKo/FileUpdater')
-        except Exception as e :
-            logging.warning(e)
-            logging.warning('Connecting to server failed!')
-            raise Exception(str(e))
-            return -1
+        
+        try:
+            if Config.Read('GITHUB','token'):
+                server = Github(Config.Read('GITHUB','token'))
+                repo = server.get_repo('TheAsKo/FileUpdater')
+            else:
+                raise ValueError("Invalid or empty GitHub token provided.")
+        except GithubException as e:
+            if "Bad credentials" in str(e):
+                logging.warning("Invalid GitHub token provided.")
+            else:
+                logging.warning(f"Connecting to the server failed: {e}")
+            
         try :
             Content=repo.get_contents('data/'+FileP).decoded_content
         except Exception as e :
@@ -166,14 +171,19 @@ def UploadFile(Filename,Filepath,VersionControlledFile=True):
     if '.xlsx' in Filename:
         FileP = Filename[:Filename.rfind('.')]+'.data' #BEATUFIL REPLACING OF FILETYPE
     else : FileP = Filename
-    try :
-        server=Github(InputToken)
-        repo=server.get_repo('TheAsKo/FileUpdater')
-    except Exception as e :
-        logging.warning('Connecting to server failed!')
-        logging.warning(e)
-        raise Exception(str(e))
-        return -1
+    
+    try:
+        if Config.Read('GITHUB','token'):
+            server = Github(Config.Read('GITHUB','token'))
+            repo = server.get_repo('TheAsKo/FileUpdater')
+        else:
+            raise ValueError("Invalid or empty GitHub token provided.")
+    except GithubException as e:
+        if "Bad credentials" in str(e):
+            logging.warning("Invalid GitHub token provided.")
+        else:
+            logging.warning(f"Connecting to the server failed: {e}")
+        
     with open(Filepath, 'rb') as f:
         data = f.read()
     repo.update_file('data/'+FileP,'upload excel.data', data ,requests.get('https://api.github.com/repos/TheAsKo/FileUpdater/contents/data/'+FileP).json()['sha'],branch='main')
