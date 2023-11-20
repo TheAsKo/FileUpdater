@@ -9,31 +9,30 @@ from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
 import subprocess
-import time
 import os
+import sys
 ##############################################################################################
 # Logging
-# Check if handlers are already added
-def Logging(): #BUGGED AS HELL
-    with open('app.log', 'w'):
-        pass
-    if not logging.getLogger().hasHandlers():
-        logging.getLogger().setLevel(Config.Read('APP', 'logging', 'int'))
-
-    # File handler for writing logs to a file
-    if Config.Read('APP', 'errorlogging', 'bool'):
-        file_handler = logging.FileHandler("app.log")
-        file_handler.setLevel(logging.DEBUG)
-        file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(file_formatter)
-        logging.getLogger().addHandler(file_handler)
-
-    # Console handler for writing logs to the console
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(console_formatter)
-    logging.getLogger().addHandler(console_handler)
+def Logging():
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        root_logger.removeHandler(handler)
+        handler.close()
+    if not root_logger.hasHandlers():
+        root_logger.setLevel(Config.Read('APP', 'logging', 'int'))
+        if Config.Read('APP', 'errorlogging', 'bool'):
+            file_handler = logging.FileHandler("app.log")
+            file_handler.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(file_formatter)
+            root_logger.addHandler(file_handler)
+        if os.path.exists("app.log") and Config.Read('APP', 'errorlogging', 'bool') == False :
+            os.remove("app.log")
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
 ##############################################################################################
 # Classes and Definitions
 def center(win):
@@ -63,8 +62,8 @@ def ButtonPress(arg):
             Code.UploadFile(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
             if messagebox.askyesno('File Version Handler','Subor bol uspesne nahraty na server.\nChcete pokracovat v pouzivani aplikacie?') == 1 : 
                 create_gui('Main')
-            else : exit()
-        case 3 : exit() # Force Quit
+            else : sys.exit()
+        case 3 : sys.exit() # Force Quit
         case 4 : pass # Update the updater
         case 5 : # Update target file
             root.wm_state('iconic')
@@ -131,6 +130,7 @@ def ButtonPress(arg):
         case 112 :
             Config.Write('APP','debug',InputCombo1_var.get())
             Config.Write('APP','errorlogging',InputCombo2_var.get())
+            Logging()
             create_gui('Main')
 
             
@@ -156,11 +156,11 @@ def MainWindow(root):
     frame = ttk.Frame(root, padding="12 12 12 12")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
     ttk.Label(frame, text="Sledovany subor: "+Config.Read('FILE','targetfile')).grid(column=1, row=1, sticky=W)
-    ttk.Label(frame, text="Lokalna verzia: "+str(Code.FileVersionCheck.Final['Time'][0])).grid(column=1, row=2, sticky=W)
-    ttk.Label(frame, text='Verzia na servery: '+str(Code.FileVersionCheck.Final['Time'][1])).grid(column=1, row=3, sticky=W)
-    if Code.VersionCompareOS(Code.FileVersionCheck.Final)[1] == 1 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),width=30).grid(column=1, row=4, sticky=N)
+    ttk.Label(frame, text="Lokalna verzia: "+str(Code.FileVersionCheck.Final['Time'][1])).grid(column=1, row=2, sticky=W)
+    ttk.Label(frame, text='Verzia na servery: '+str(Code.FileVersionCheck.Final['Time'][0])).grid(column=1, row=3, sticky=W)
+    if Code.FileVersionCheck.VersionFinal[1] == 1 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),width=30).grid(column=1, row=4, sticky=N)
     else : ttk.Button(frame, text="Stiahnut subor zo servera",command=lambda:ButtonPress(1),state=DISABLED,width=30).grid(column=1, row=4, sticky=N)
-    if Code.VersionCompareOS(Code.FileVersionCheck.Final)[1] == 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),width=30).grid(column=2, row=4, sticky=N)
+    if Code.FileVersionCheck.VersionFinal[1] == 2 or Config.Read('APP','debug','bool') == True  : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),width=30).grid(column=2, row=4, sticky=N)
     else : ttk.Button(frame, text="Nahrat subor na server",command=lambda:ButtonPress(2),state=DISABLED,width=30).grid(column=2, row=4, sticky=N)
     ttk.Button(frame, text="Vypnut aplikaciu",command=lambda:ButtonPress(3),width=30).grid(column=3, row=4, sticky=N)
     ttk.Button(frame, text="Aktualizovat aplikaciu",command=lambda:ButtonPress(4),state=DISABLED,width=30).grid(column=1, row=5, sticky=N)
@@ -230,15 +230,15 @@ def InputWindow(root,WindowID):
 
 
 if __name__ == '__main__':
-    logging.debug("UI Start")
     Logging()
+    logging.debug("UI Start")
     root = Tk()
     root.title("File Version Handler")
     root.resizable(False, False) 
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
     mainframe = ttk.Frame() # LAZY FIXING OF ERROR
-    try: #### FIRST LAUNCH 
+    try: #### FIRST LAUNCH
         Code.FileVersionCheck.__runos__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
     except Exception as e: 
         logging.critical('First run failed , requesting new token')
@@ -248,7 +248,7 @@ if __name__ == '__main__':
         else : create_gui('Main')
     else : create_gui('Main')
     root.update_idletasks()
-    #root.geometry(f"{mainframe.winfo_reqwidth()}x{mainframe.winfo_reqheight()}") I would like to have this on but idk how to autoupdate depending on window + even first window is somehow broken
+    #root.geometry(f"{mainframe.winfo_reqwidth()}x{mainframe.winfo_reqheight()}") #I would like to have this on but idk how to autoupdate depending on window + even first window is somehow broken
     center(root)
     root.wm_state('normal')
     root.mainloop()
