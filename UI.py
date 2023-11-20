@@ -8,6 +8,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
+import tkinter as tk
 import subprocess
 import os
 import sys
@@ -142,6 +143,8 @@ def create_gui(WindowID,ID=0):
         case 'Main' : mainframe = MainWindow(root)
         case 'Input' : mainframe = InputWindow(root,ID)
     mainframe.pack(padx=10, pady=10)
+    root.update_idletasks()
+    root.geometry(f"{mainframe.winfo_reqwidth()}x{mainframe.winfo_reqheight()}")
     root.wm_state('normal')
 ##############################################################################################
 #  WindowCreation
@@ -153,7 +156,7 @@ def MainWindow(root):
     except Exception as e: #IF THIS HAPPENS SOMETHING IS VERY BAD
         logging.critical('Failed to initialize code')
         
-    frame = ttk.Frame(root, padding="12 12 12 12")
+    frame = ttk.Frame(root, relief=tk.GROOVE , padding="20 20 20 20")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
     ttk.Label(frame, text="Sledovany subor: "+Config.Read('FILE','targetfile')).grid(column=1, row=1, sticky=W)
     ttk.Label(frame, text="Lokalna verzia: "+str(Code.FileVersionCheck.Final['Time'][1])).grid(column=1, row=2, sticky=W)
@@ -181,7 +184,7 @@ def InputWindow(root,WindowID):
     global InputEntry1
     global InputCombo1_var
     global InputCombo2_var
-    frame = ttk.Frame(root, padding="12 12 12 12")
+    frame = ttk.Frame(root, relief=tk.GROOVE , padding="20 20 20 20")
     frame.grid(column=0, row=0, sticky=(N, W, E, S))
     match WindowID :
         case 6 :
@@ -241,14 +244,12 @@ if __name__ == '__main__':
     try: #### FIRST LAUNCH
         Code.FileVersionCheck.__runos__(Config.Read('FILE','targetfile'),Config.Read('FILE','targetfilepath'))
     except Exception as e: 
-        logging.critical('First run failed , requesting new token')
-        if '401' in str(e) :
-            print(e)
+        logging.critical('First run failed')
+        logging.warning(e)
+        if 'token provided' in str(e) :
             create_gui('Input','GithubToken')
         else : create_gui('Main')
     else : create_gui('Main')
-    root.update_idletasks()
-    #root.geometry(f"{mainframe.winfo_reqwidth()}x{mainframe.winfo_reqheight()}") #I would like to have this on but idk how to autoupdate depending on window + even first window is somehow broken
     center(root)
     root.wm_state('normal')
     root.mainloop()
